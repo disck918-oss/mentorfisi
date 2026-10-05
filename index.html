@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MentorFISI</title>
+<style>
+:root{--ink:#1d1b1e;--mute:#5d5a60;--bg:#f3f4f6;--panel:#fff;--line:#d9dbe0;--red:#7d1d2f;--ok:#1f6b4a}
+@media (prefers-color-scheme:dark){:root{--ink:#eceaee;--mute:#a8a5ad;--bg:#16151a;--panel:#201f26;--line:#383640;--red:#d98a98;--ok:#7fd1a5}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,sans-serif}
+main{max-width:640px;margin:0 auto;padding:24px 16px 64px}
+h1{font:700 2rem/1.1 Georgia,serif;color:var(--red);margin:8px 0 4px}h2{font:700 1.25rem Georgia,serif;margin:0 0 12px}
+p.sub{color:var(--mute);margin:0 0 24px}
+section{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:20px;margin-bottom:20px}
+label{display:block;font-weight:600;margin:14px 0 4px}
+input[type=text],select{width:100%;padding:10px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink);font:inherit}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+.grid label{font-weight:400;margin:0;border:1px solid var(--line);border-radius:4px;padding:6px 2px;text-align:center;font-size:.8rem;cursor:pointer}
+.grid input{position:absolute;opacity:0}.grid label:has(input:checked){background:var(--red);color:#fff;border-color:var(--red)}
+.grid label:has(input:focus-visible),button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--red);outline-offset:2px}
+.chk{font-weight:400;display:flex;gap:8px;margin:14px 0}
+button{margin-top:16px;padding:10px 18px;border:0;border-radius:4px;background:var(--red);color:#fff;font:600 1rem system-ui;cursor:pointer}
+button.sec{margin:0 0 0 auto;background:none;color:var(--red);border:1px solid var(--red);padding:6px 12px}
+.msg{margin-top:12px;min-height:1.4em;color:var(--mute)}.msg.ok{color:var(--ok)}
+.res{border-top:1px solid var(--line);padding:12px 0;display:flex;gap:12px;align-items:center}.res small{color:var(--mute)}
+</style></head><body><main>
+<h1>MentorFISI</h1>
+<p class="sub">Encuentra a un estudiante avanzado que te ayude en tu curso. Prototipo del piloto: no uses datos académicos reales.</p>
+
+<section><h2>1. Regístrate</h2>
+<label for="role">Quiero ser</label>
+<select id="role"><option value="mentee">Estudiante que busca apoyo</option><option value="mentor">Mentor voluntario</option></select>
+<label for="name">Nombre o alias</label><input id="name" type="text" maxlength="80" autocomplete="off">
+<label for="rcourse">Curso</label><select id="rcourse"></select>
+<label>Horarios disponibles</label><div class="grid" id="rslots"></div>
+<label for="rmod">Modalidad</label>
+<select id="rmod"><option value="ambas">Presencial o virtual</option><option value="presencial">Presencial</option><option value="virtual">Virtual</option></select>
+<label class="chk"><input type="checkbox" id="consent"> Acepto que mis datos se usen solo para el piloto y se muestren de forma agregada.</label>
+<button id="reg">Registrarme</button><div class="msg" id="rmsg"></div></section>
+
+<section><h2>2. Busca un mentor</h2>
+<label for="scourse">Curso</label><select id="scourse"></select>
+<label>Tus horarios</label><div class="grid" id="sslots"></div>
+<label for="smod">Modalidad</label>
+<select id="smod"><option value="ambas">Presencial o virtual</option><option value="presencial">Presencial</option><option value="virtual">Virtual</option></select>
+<button id="find">Buscar mentores</button><div class="msg" id="smsg"></div><div id="out"></div></section>
+</main>
+<script>
+const COURSES=['Matemática Básica','Cálculo I','Física I','Algoritmos y Programación','Estructuras de Datos'];
+const SLOTS=[];for(const h of [14,16,18,20])for(const d of ['Lun','Mar','Mié','Jue','Vie'])SLOTS.push(`${d} ${h}:00`);
+const $=id=>document.getElementById(id);let menteeId=null;
+for(const s of ['rcourse','scourse'])$(s).innerHTML=COURSES.map(c=>`<option>${c}</option>`).join('');
+for(const g of ['rslots','sslots'])$(g).innerHTML=SLOTS.map(s=>`<label><input type="checkbox" value="${s}">${s}</label>`).join('');
+const picked=g=>[...$(g).querySelectorAll('input:checked')].map(i=>i.value);
+const post=async(u,b)=>{const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const d=await r.json();if(!r.ok)throw new Error(d.error||'Error');return d};
+const say=(id,t,ok)=>{$(id).textContent=t;$(id).className='msg'+(ok?' ok':'')};
+$('reg').onclick=async()=>{try{
+  const d=await post('/api/register',{role:$('role').value,name:$('name').value,courses:[$('rcourse').value],slots:picked('rslots'),modality:$('rmod').value,consent:$('consent').checked});
+  if($('role').value==='mentee')menteeId=d.id;
+  say('rmsg',$('role').value==='mentee'?'Listo. Ahora busca un mentor abajo.':'Listo. Los estudiantes ya pueden encontrarte.',true);
+}catch(e){say('rmsg',e.message)}};
+$('find').onclick=async()=>{try{
+  say('smsg','Buscando…');$('out').innerHTML='';
+  const {results}=await post('/api/recommend',{course:$('scourse').value,slots:picked('sslots'),modality:$('smod').value});
+  if(!results.length)return say('smsg','Aún no hay mentores con esos horarios. Prueba con más horarios u otra modalidad.');
+  say('smsg',results[0].ia?'Explicaciones generadas con IA; tú decides.':'Recomendaciones por reglas; tú decides.',true);
+  $('out').innerHTML=results.map(r=>`<div class="res"><div><strong>${esc(r.name)}</strong><br><small>${esc(r.reason)}</small></div><button class="sec" data-m="${r.id}" data-s="${esc(r.common[0])}">Solicitar ${esc(r.common[0])}</button></div>`).join('');
+  $('out').querySelectorAll('button').forEach(b=>b.onclick=async()=>{try{
+    if(!menteeId)return say('smsg','Regístrate primero como estudiante (paso 1).');
+    await post('/api/request',{mentee_id:menteeId,mentor_id:b.dataset.m,course:$('scourse').value,slot:b.dataset.s});
+    b.disabled=true;b.textContent='Solicitud enviada';
+  }catch(e){say('smsg',e.message)}});
+}catch(e){say('smsg',e.message)}};
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+</script></body></html>
