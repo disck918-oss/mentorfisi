@@ -1,21 +1,24 @@
 import { sb, handler } from './_lib.js';
 
-// Reglas deterministas: curso + horarios en común + modalidad.
-// La IA solo redacta la explicación; recibe datos anónimos (sin nombres ni IDs).
+// Reglas deterministas eligen; la IA solo redacta la explicación (datos anónimos).
 async function explain(course, items) {
   const key = process.env.GEMINI_API_KEY;
-  if (!key) return null;
+  if (!key) return { err: 'falta GEMINI_API_KEY en Vercel' };
   const prompt = `Para el curso "${course}", explica en una frase breve en español (máx. 20 palabras) por qué cada mentor es buena opción. Devuelve solo un arreglo JSON de ${items.length} textos, en el mismo orden. Datos: ${JSON.stringify(items.map(i => ({ horarios_comunes: i.common, modalidad: i.modality })))}`;
   try {
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${process.env.GEMINI_MODEL || 'gemini-2.5-flash'}:generateContent`, {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${process.env.GEMINI_MODEL || 'gemini-3.8-flash'}:generateContent`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
       body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json' } }),
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(20000),
     });
-    const out = JSON.parse((await r.json()).candidates[0].content.parts[0].text);
-    return Array.isArray(out) && out.length === items.length ? out.map(String) : null;
-  } catch { return null; }
+    const d = await r.json();
+    if (!r.ok) return { err: `Gemini ${r.status}: ${(d.error?.message || '').slice(0, 200)}` };
+    const text = (d.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('');
+    const out = JSON.parse(text);
+    if (!Array.isArray(out) || out.length !== items.length) return { err: 'formato inesperado: ' + text.slice(0, 100) };
+    return { out: out.map(String) };
+  } catch (e) { return { err: e.message }; }
 }
 
 export default handler(async ({ course, slots = [], modality = 'ambas' }) => {
@@ -31,11 +34,12 @@ export default handler(async ({ course, slots = [], modality = 'ambas' }) => {
     .filter(m => m.common.length && m.modeOk)
     .sort((a, b) => b.score - a.score)
     .slice(0, 3);
-  const ai = await explain(course, ranked);
+  const ai = ranked.length ? await explain(course, ranked) : {};
   return {
+    ia_error: ai.err,
     results: ranked.map((m, i) => ({
-      id: m.id, name: m.name, common: m.common, ia: !!ai,
-      reason: ai?.[i] || `Enseña ${course}, coincide en ${m.common.join(', ')} y su modalidad (${m.modality}) es compatible.`,
+      id: m.id, name: m.name, common: m.common, ia: !!ai.out,
+      reason: ai.out?.[i] || `Enseña ${course}, coincide en ${m.common.join(', ')} y su modalidad (${m.modality}) es compatible.`,
     })),
   };
 });
