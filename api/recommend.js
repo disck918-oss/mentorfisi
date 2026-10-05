@@ -5,7 +5,7 @@ async function explain(course, items) {
   if (!key) return { err: 'falta GEMINI_API_KEY en Vercel' };
   const prompt = `Para el curso "${course}", explica en una frase breve en español (máx. 20 palabras) por qué cada mentor es buena opción. Devuelve solo un arreglo JSON de ${items.length} textos, en el mismo orden. Datos: ${JSON.stringify(items.map(i => ({ horarios_comunes: i.common, modalidad: i.modality })))}`;
   try {
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${process.env.GEMINI_MODEL || 'gemini-3.8-flash'}:generateContent`, {
+    const r = await fetchRetry(`https://generativelanguage.googleapis.com/v1beta/models/${process.env.GEMINI_MODEL || 'gemini-3.8-flash'}:generateContent`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
       body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json' } }),
@@ -42,3 +42,13 @@ export default handler(async ({ course, slots = [], modality = 'ambas' }) => {
     })),
   };
 });
+
+async function fetchRetry(url, opts, n = 3) {
+  let r;
+  for (let i = 0; i < n; i++) {
+    r = await fetch(url, opts);
+    if (r.status !== 503 && r.status !== 429) return r;
+    await new Promise(res => setTimeout(res, 1500 * (i + 1)));
+  }
+  return r;
+}
