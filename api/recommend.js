@@ -1,6 +1,5 @@
 import { sb, handler } from './_lib.js';
 
-// Reglas deterministas eligen; la IA solo redacta la explicación (datos anónimos).
 async function explain(course, items) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return { err: 'falta GEMINI_API_KEY en Vercel' };
