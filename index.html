@@ -21,6 +21,7 @@ button{margin-top:16px;padding:10px 18px;border:0;border-radius:4px;background:v
 button.sec{margin:0 0 0 auto;background:none;color:var(--red);border:1px solid var(--red);padding:6px 12px}
 .msg{margin-top:12px;min-height:1.4em;color:var(--mute)}.msg.ok{color:var(--ok)}
 .res{border-top:1px solid var(--line);padding:12px 0;display:flex;gap:12px;align-items:center}.res small{color:var(--mute)}
+.slots{display:flex;flex-direction:column;gap:6px;margin-left:auto}.slots button.sec{margin:0}
 </style></head><body><main>
 <h1>MentorFISI</h1>
 <p class="sub">Encuentra a un estudiante avanzado que te ayude en tu curso. Prototipo del piloto: no uses datos académicos reales.</p>
@@ -62,7 +63,7 @@ $('find').onclick=async()=>{try{
   const {results}=await post('/api/recommend',{course:$('scourse').value,slots:picked('sslots'),modality:$('smod').value});
   if(!results.length)return say('smsg','Aún no hay mentores con esos horarios. Prueba con más horarios u otra modalidad.');
   say('smsg',results[0].ia?'Explicaciones generadas con IA; tú decides.':'Recomendaciones por reglas; tú decides.',true);
-  $('out').innerHTML=results.map(r=>`<div class="res"><div><strong>${esc(r.name)}</strong><br><small>${esc(r.reason)}</small></div><button class="sec" data-m="${r.id}" data-s="${esc(r.common[0])}">Solicitar ${esc(r.common[0])}</button></div>`).join('');
+  $('out').innerHTML=results.map(r=>`<div class="res"><div><strong>${esc(r.name)}</strong><br><small>${esc(r.reason)}</small></div><div class="slots">${r.common.slice(0,4).map(s=>`<button class="sec" data-m="${r.id}" data-s="${esc(s)}">Solicitar ${esc(s)}</button>`).join('')}</div></div>`).join('');
   $('out').querySelectorAll('button').forEach(b=>b.onclick=async()=>{try{
     if(!menteeId)return say('smsg','Regístrate primero como estudiante (paso 1).');
     await post('/api/request',{mentee_id:menteeId,mentor_id:b.dataset.m,course:$('scourse').value,slot:b.dataset.s});
