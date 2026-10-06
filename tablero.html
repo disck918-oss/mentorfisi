@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MentorFISI · Tablero</title>
+<style>
+:root{--ink:#1d1b1e;--mute:#5d5a60;--bg:#f3f4f6;--panel:#fff;--line:#d9dbe0;--red:#7d1d2f}
+@media (prefers-color-scheme:dark){:root{--ink:#eceaee;--mute:#a8a5ad;--bg:#16151a;--panel:#201f26;--line:#383640;--red:#d98a98}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,sans-serif}
+main{max-width:720px;margin:0 auto;padding:24px 16px 64px}
+h1{font:700 2rem/1.1 Georgia,serif;color:var(--red);margin:8px 0 4px}h2{font:700 1.25rem Georgia,serif;margin:24px 0 8px}
+.sub,.msg{color:var(--mute)}.sub{margin:0 0 16px}.msg{margin-bottom:16px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.k{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px}
+.k b{display:block;font:700 1.8rem Georgia,serif;color:var(--red)}.k span{color:var(--mute);font-size:.85rem}
+table{width:100%;border-collapse:collapse;background:var(--panel)}th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line)}
+</style></head><body><main>
+<h1>Tablero MentorFISI</h1>
+<p class="sub">Indicadores agregados del piloto. No muestra nombres ni datos individuales.</p>
+<div class="msg" id="msg">Cargando…</div>
+<div class="kpis" id="k"></div>
+<section id="cs" hidden><h2>Por curso</h2>
+<table><thead><tr><th>Curso</th><th>Solicitudes</th><th>Aceptadas</th></tr></thead><tbody id="t"></tbody></table></section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+(async()=>{try{
+  const key=new URLSearchParams(location.search).get('k')||'';
+  const r=await fetch('/api/stats',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key})});
+  const d=await r.json();if(!r.ok)throw new Error(d.error||'Error');
+  const K=[['Mentores',d.mentores],['Estudiantes',d.estudiantes],['Solicitudes',d.solicitudes],['Pendientes',d.pendientes],['Aceptadas',d.aceptadas],['Rechazadas',d.rechazadas],['Aceptadas en ≤24 h',d.pct_aceptadas_24h==null?'–':d.pct_aceptadas_24h+' %'],['Mediana de respuesta',d.mediana_horas==null?'–':d.mediana_horas+' h']];
+  $('k').innerHTML=K.map(([a,b])=>`<div class="k"><b>${b}</b><span>${a}</span></div>`).join('');
+  const rows=Object.entries(d.por_curso);
+  $('t').innerHTML=rows.map(([c,v])=>`<tr><td>${esc(c)}</td><td>${v.solicitudes}</td><td>${v.aceptadas}</td></tr>`).join('');
+  $('cs').hidden=!rows.length;
+  $('msg').textContent='Meta del informe: 80 % de solicitudes aceptadas en menos de 24 h.';
+}catch(e){$('msg').textContent=e.message}})();
+</script></body></html>
