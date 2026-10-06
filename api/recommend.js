@@ -3,7 +3,7 @@ import { sb, handler } from './_lib.js';
 async function explain(course, items) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return { err: 'falta GEMINI_API_KEY en Vercel' };
-  const prompt = `Para el curso "${course}", explica en una frase breve en español (máx. 20 palabras) por qué cada mentor es buena opción. Devuelve solo un arreglo JSON de ${items.length} textos, en el mismo orden. Datos: ${JSON.stringify(items.map(i => ({ horarios_comunes: i.common, modalidad: i.modality })))}`;
+  const prompt = `Para el curso "${course}", explica en una frase breve en español (máx. 20 palabras) por qué cada mentor encaja, usando SOLO los datos dados (horarios comunes y modalidad). No inventes cualidades, experiencia, notas ni método de enseñanza. Devuelve solo un arreglo JSON de ${items.length} textos, en el mismo orden. Datos: ${JSON.stringify(items.map(i => ({ horarios_comunes: i.common, modalidad: i.modality })))}`;
   try {
     const r = await fetchRetry(`https://generativelanguage.googleapis.com/v1beta/models/${process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite'}:generateContent`, {
       method: 'POST',
