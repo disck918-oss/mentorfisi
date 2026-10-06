@@ -8,6 +8,6 @@ export default handler(async ({ role, name, courses, slots, modality = 'ambas', 
     method: 'POST',
     body: JSON.stringify({ role, name: name.trim().slice(0, 80), courses, slots, modality, consent_at: new Date().toISOString(), consent_version: CONSENT_VERSION }),
   });
-  // El código personal solo se entrega al mentor, una vez, al registrarse.
-  return { id: row.id, code: role === 'mentor' ? row.access_code : undefined };
+  // El código personal se entrega una sola vez, al registrarse (mentor y estudiante).
+  return { id: row.id, code: row.access_code };
 });

@@ -24,11 +24,13 @@ table{width:100%;border-collapse:collapse;background:var(--panel)}th,td{text-ali
 <script>
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const dash=v=>v==null?'–':v;
 (async()=>{try{
   const key=new URLSearchParams(location.search).get('k')||'';
   const r=await fetch('/api/stats',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key})});
   const d=await r.json();if(!r.ok)throw new Error(d.error||'Error');
-  const K=[['Mentores',d.mentores],['Estudiantes',d.estudiantes],['Solicitudes',d.solicitudes],['Pendientes',d.pendientes],['Aceptadas',d.aceptadas],['Rechazadas',d.rechazadas],['Aceptadas en ≤24 h',d.pct_aceptadas_24h==null?'–':d.pct_aceptadas_24h+' %'],['Mediana de respuesta',d.mediana_min==null?'–':d.mediana_min<60?d.mediana_min+' min':(d.mediana_min/60).toFixed(1)+' h']];
+  const m=d.mediana_min;
+  const K=[['Mentores',d.mentores],['Estudiantes',d.estudiantes],['Solicitudes',d.solicitudes],['Pendientes',d.pendientes],['Aceptadas',d.aceptadas],['Rechazadas',d.rechazadas],['Aceptadas en ≤24 h',d.pct_aceptadas_24h==null?'–':d.pct_aceptadas_24h+' %'],['Mediana de respuesta',m==null?'–':m<60?m+' min':(m/60).toFixed(1)+' h'],['Sesiones realizadas',d.realizadas],['No realizadas',d.no_realizadas],['Satisfacción (1 a 5)',dash(d.satisfaccion)],['Calificaciones 4 o 5',d.pct_4_5==null?'–':d.pct_4_5+' %']];
   $('k').innerHTML=K.map(([a,b])=>`<div class="k"><b>${b}</b><span>${a}</span></div>`).join('');
   const rows=Object.entries(d.por_curso);
   $('t').innerHTML=rows.map(([c,v])=>`<tr><td>${esc(c)}</td><td>${v.solicitudes}</td><td>${v.aceptadas}</td></tr>`).join('');

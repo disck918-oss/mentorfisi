@@ -44,6 +44,7 @@ button.sec{margin:0 0 0 auto;background:none;color:var(--red);border:1px solid v
 <select id="smod"><option value="ambas">Presencial o virtual</option><option value="presencial">Presencial</option><option value="virtual">Virtual</option></select>
 <button id="find">Buscar mentores</button><div class="msg" id="smsg"></div><div id="out"></div></section>
 <section id="inbox" hidden><h2>Solicitudes recibidas</h2><div class="msg" id="imsg"></div><div id="ilist"></div></section>
+<section id="mine" hidden><h2>Mis solicitudes</h2><div class="msg" id="mmsg"></div><div id="mlist"></div></section>
 </main>
 <script>
 const COURSES=['Matemática Básica','Cálculo I','Física I','Algoritmos y Programación','Estructuras de Datos'];
@@ -57,7 +58,7 @@ const say=(id,t,ok)=>{$(id).textContent=t;$(id).className='msg'+(ok?' ok':'')};
 $('reg').onclick=async()=>{try{
   const d=await post('/api/register',{role:$('role').value,name:$('name').value,courses:[$('rcourse').value],slots:picked('rslots'),modality:$('rmod').value,consent:$('consent').checked});
   if($('role').value==='mentee')menteeId=d.id;
-  if(d.code){const u=location.origin+'/?m='+d.code;$('rmsg').className='msg ok';$('rmsg').innerHTML='Listo. Guarda este enlace personal: es tu acceso para ver y responder solicitudes. <a href="'+esc(u)+'">'+esc(u)+'</a>'}else say('rmsg','Listo. Ahora busca un mentor abajo.',true);
+  if(d.code){const m=$('role').value==='mentor',u=location.origin+(m?'/?m=':'/?e=')+d.code;$('rmsg').className='msg ok';$('rmsg').innerHTML='Listo. Guarda este enlace personal: '+(m?'es tu acceso para ver y responder solicitudes.':'es tu acceso para ver el estado de tus solicitudes y calificar las sesiones. Ahora busca un mentor abajo.')+' <a href="'+esc(u)+'">'+esc(u)+'</a>'}else say('rmsg','Listo.',true);
 }catch(e){say('rmsg',e.message)}};
 $('find').onclick=async()=>{try{
   say('smsg','Buscando…');$('out').innerHTML='';
@@ -80,4 +81,19 @@ async function loadInbox(){try{
   $('ilist').querySelectorAll('button').forEach(b=>b.onclick=async()=>{try{await post('/api/respond',{code,request_id:b.dataset.r,action:b.dataset.a});loadInbox()}catch(e){say('imsg',e.message)}});
 }catch(e){say('imsg',e.message)}}
 if(code){$('inbox').hidden=false;loadInbox()}
+const ecode=new URLSearchParams(location.search).get('e');
+async function loadMine(){try{
+  const {items}=await post('/api/mine',{code:ecode});
+  say('mmsg',items.length?'':'Aún no has enviado solicitudes.');
+  $('mlist').innerHTML=items.map(i=>{
+    const est=i.status==='pendiente'?'Esperando respuesta':i.status==='rechazada'?'Rechazada':i.session_done===null?'Aceptada: confirma si la sesión se realizó':i.session_done?'Realizada · calificación '+i.rating:'No se realizó';
+    const act=(i.status==='confirmada'&&i.session_done===null)?`<div class="slots"><select data-r="${i.id}"><option value="">Calificar…</option><option value="5">5 · Muy buena</option><option value="4">4</option><option value="3">3</option><option value="2">2</option><option value="1">1 · Mala</option></select><button class="sec" data-r="${i.id}" data-d="1">Se realizó</button><button class="sec" data-r="${i.id}" data-d="0">No se realizó</button></div>`:'';
+    return `<div class="res"><div><strong>${esc(i.mentor?.name||'Mentor')}</strong><br><small>${esc(i.course)} · ${esc(i.slot)} · ${esc(est)}</small></div>${act}</div>`}).join('');
+  $('mlist').querySelectorAll('button').forEach(b=>b.onclick=async()=>{try{
+    const id=b.dataset.r,done=b.dataset.d==='1',rating=+$('mlist').querySelector(`select[data-r="${id}"]`).value;
+    if(done&&!rating)return say('mmsg','Elige una calificación de 1 a 5 antes de confirmar.');
+    await post('/api/feedback',{code:ecode,request_id:id,done,rating:done?rating:null});loadMine();
+  }catch(e){say('mmsg',e.message)}});
+}catch(e){say('mmsg',e.message)}}
+if(ecode){$('mine').hidden=false;loadMine()}
 </script></body></html>
