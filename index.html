@@ -43,6 +43,7 @@ button.sec{margin:0 0 0 auto;background:none;color:var(--red);border:1px solid v
 <label for="smod">Modalidad</label>
 <select id="smod"><option value="ambas">Presencial o virtual</option><option value="presencial">Presencial</option><option value="virtual">Virtual</option></select>
 <button id="find">Buscar mentores</button><div class="msg" id="smsg"></div><div id="out"></div></section>
+<section id="inbox" hidden><h2>Solicitudes recibidas</h2><div class="msg" id="imsg"></div><div id="ilist"></div></section>
 </main>
 <script>
 const COURSES=['Matemática Básica','Cálculo I','Física I','Algoritmos y Programación','Estructuras de Datos'];
@@ -56,7 +57,7 @@ const say=(id,t,ok)=>{$(id).textContent=t;$(id).className='msg'+(ok?' ok':'')};
 $('reg').onclick=async()=>{try{
   const d=await post('/api/register',{role:$('role').value,name:$('name').value,courses:[$('rcourse').value],slots:picked('rslots'),modality:$('rmod').value,consent:$('consent').checked});
   if($('role').value==='mentee')menteeId=d.id;
-  say('rmsg',$('role').value==='mentee'?'Listo. Ahora busca un mentor abajo.':'Listo. Los estudiantes ya pueden encontrarte.',true);
+  if(d.code){const u=location.origin+'/?m='+d.code;$('rmsg').className='msg ok';$('rmsg').innerHTML='Listo. Guarda este enlace personal: es tu acceso para ver y responder solicitudes. <a href="'+esc(u)+'">'+esc(u)+'</a>'}else say('rmsg','Listo. Ahora busca un mentor abajo.',true);
 }catch(e){say('rmsg',e.message)}};
 $('find').onclick=async()=>{try{
   say('smsg','Buscando…');$('out').innerHTML='';
@@ -71,4 +72,12 @@ $('find').onclick=async()=>{try{
   }catch(e){say('smsg',e.message)}});
 }catch(e){say('smsg',e.message)}};
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+const code=new URLSearchParams(location.search).get('m');
+async function loadInbox(){try{
+  const {items}=await post('/api/inbox',{code});
+  say('imsg',items.length?'':'Aún no tienes solicitudes.');
+  $('ilist').innerHTML=items.map(i=>`<div class="res"><div><strong>${esc(i.mentee?.name||'Estudiante')}</strong><br><small>${esc(i.course)} · ${esc(i.slot)} · ${esc(i.status)}</small></div>${i.status==='pendiente'?`<div class="slots"><button class="sec" data-r="${i.id}" data-a="confirmada">Aceptar</button><button class="sec" data-r="${i.id}" data-a="rechazada">Rechazar</button></div>`:''}</div>`).join('');
+  $('ilist').querySelectorAll('button').forEach(b=>b.onclick=async()=>{try{await post('/api/respond',{code,request_id:b.dataset.r,action:b.dataset.a});loadInbox()}catch(e){say('imsg',e.message)}});
+}catch(e){say('imsg',e.message)}}
+if(code){$('inbox').hidden=false;loadInbox()}
 </script></body></html>
