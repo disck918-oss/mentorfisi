@@ -27,6 +27,7 @@ export default handler(async ({ key }) => {
     rechazadas: reqs.filter(r => r.status === 'rechazada').length,
     pct_aceptadas_24h: reqs.length ? Math.round((100 * acc24) / reqs.length) : null,
     mediana_horas: median === null ? null : Math.round(median * 10) / 10,
+    mediana_min: median === null ? null : Math.round(median * 60),
     por_curso,
   };
 });
