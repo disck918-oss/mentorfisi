@@ -5,7 +5,7 @@ export default handler(async ({ key }) => {
   if (process.env.DASH_KEY && key !== process.env.DASH_KEY) throw new Error('Clave incorrecta.');
   const [profiles, reqs] = await Promise.all([
     sb('profiles?select=role'),
-    sb('requests?select=course,status,created_at,responded_at,session_done,rating'),
+    sb('requests?select=course,status,created_at,responded_at,session_done,rating,session_date'),
   ]);
   const hrs = reqs.filter(r => r.responded_at).map(r => (new Date(r.responded_at) - new Date(r.created_at)) / H).sort((a, b) => a - b);
   const mid = Math.floor(hrs.length / 2);
@@ -28,6 +28,7 @@ export default handler(async ({ key }) => {
     rechazadas: reqs.filter(r => r.status === 'rechazada').length,
     pct_aceptadas_24h: reqs.length ? Math.round((100 * acc24) / reqs.length) : null,
     mediana_min: median === null ? null : Math.round(median * 60),
+    programadas: reqs.filter(r => r.status === 'confirmada' && r.session_date && r.session_done === null).length,
     realizadas: reqs.filter(r => r.session_done === true).length,
     no_realizadas: reqs.filter(r => r.session_done === false).length,
     satisfaccion: rated.length ? Math.round((10 * rated.reduce((a, r) => a + r.rating, 0)) / rated.length) / 10 : null,

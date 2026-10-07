@@ -11,7 +11,7 @@ h1{font:700 2rem/1.1 Georgia,serif;color:var(--red);margin:8px 0 4px}h2{font:700
 p.sub{color:var(--mute);margin:0 0 24px}
 section{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:20px;margin-bottom:20px}
 label{display:block;font-weight:600;margin:14px 0 4px}
-input[type=text],select{width:100%;padding:10px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink);font:inherit}
+input[type=text],input[type=date],select{width:100%;padding:10px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink);font:inherit}
 .grid{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
 .grid label{font-weight:400;margin:0;border:1px solid var(--line);border-radius:4px;padding:6px 2px;text-align:center;font-size:.8rem;cursor:pointer}
 .grid input{position:absolute;opacity:0}.grid label:has(input:checked){background:var(--red);color:#fff;border-color:var(--red)}
@@ -74,21 +74,34 @@ $('find').onclick=async()=>{try{
 }catch(e){say('smsg',e.message)}};
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 const code=new URLSearchParams(location.search).get('m');
+const DAYS={Lun:1,Mar:2,'Mié':3,Jue:4,Vie:5};
+function nextDate(slot){const w=DAYS[slot.split(' ')[0]],d=new Date();for(let k=0;k<8&&d.getDay()!==w;k++)d.setDate(d.getDate()+1);return d.toLocaleDateString('en-CA')}
+function fd(s){return new Date(s+'T12:00:00').toLocaleDateString('es-PE',{weekday:'short',day:'numeric',month:'short'})}
 async function loadInbox(){try{
   const {items,approved}=await post('/api/inbox',{code});
   say('imsg',!approved?'Tu perfil está pendiente de aprobación: aún no apareces en las búsquedas.':items.length?'':'Aún no tienes solicitudes.');
-  $('ilist').innerHTML=items.map(i=>`<div class="res"><div><strong>${esc(i.mentee?.name||'Estudiante')}</strong><br><small>${esc(i.course)} · ${esc(i.slot)} · ${esc(i.status)}</small></div>${i.status==='pendiente'?`<div class="slots"><button class="sec" data-r="${i.id}" data-a="confirmada">Aceptar</button><button class="sec" data-r="${i.id}" data-a="rechazada">Rechazar</button></div>`:''}</div>`).join('');
-  $('ilist').querySelectorAll('button').forEach(b=>b.onclick=async()=>{try{await post('/api/respond',{code,request_id:b.dataset.r,action:b.dataset.a});loadInbox()}catch(e){say('imsg',e.message)}});
+  $('ilist').innerHTML=items.map(i=>{
+    const info=esc(i.course)+' · '+esc(i.slot)+' · '+esc(i.status)+(i.session_date?' · '+esc(fd(i.session_date))+(i.session_place?' · '+esc(i.session_place):''):'');
+    const act=i.status==='pendiente'?`<div class="slots"><input type="date" data-r="${i.id}" value="${nextDate(i.slot)}" min="${new Date().toLocaleDateString('en-CA')}"><input type="text" data-p="${i.id}" maxlength="120" placeholder="Lugar o enlace de la sesión"><button class="sec" data-r="${i.id}" data-a="confirmada">Aceptar</button><button class="sec" data-r="${i.id}" data-a="rechazada">Rechazar</button></div>`:'';
+    return `<div class="res"><div><strong>${esc(i.mentee?.name||'Estudiante')}</strong><br><small>${info}</small></div>${act}</div>`}).join('');
+  $('ilist').querySelectorAll('button').forEach(b=>b.onclick=async()=>{try{
+    const id=b.dataset.r,acc=b.dataset.a==='confirmada';
+    const date=$('ilist').querySelector(`input[data-r="${id}"]`).value,place=$('ilist').querySelector(`input[data-p="${id}"]`).value.trim();
+    if(acc&&(!date||!place))return say('imsg','Para aceptar, indica la fecha y el lugar o enlace de la sesión.');
+    await post('/api/respond',{code,request_id:id,action:b.dataset.a,date:acc?date:undefined,place:acc?place:undefined});loadInbox();
+  }catch(e){say('imsg',e.message)}});
 }catch(e){say('imsg',e.message)}}
 if(code){$('inbox').hidden=false;loadInbox()}
 const ecode=new URLSearchParams(location.search).get('e');
 async function loadMine(){try{
-  const {items}=await post('/api/mine',{code:ecode});
+  const {items,today}=await post('/api/mine',{code:ecode});
   say('mmsg',items.length?'':'Aún no has enviado solicitudes.');
   $('mlist').innerHTML=items.map(i=>{
-    const est=i.status==='pendiente'?'Esperando respuesta':i.status==='rechazada'?'Rechazada':i.session_done===null?'Aceptada: confirma si la sesión se realizó':i.session_done?'Realizada · calificación '+i.rating:'No se realizó';
-    const act=(i.status==='confirmada'&&i.session_done===null)?`<div class="slots"><select data-r="${i.id}"><option value="">Calificar…</option><option value="5">5 · Muy buena</option><option value="4">4</option><option value="3">3</option><option value="2">2</option><option value="1">1 · Mala</option></select><button class="sec" data-r="${i.id}" data-d="1">Se realizó</button><button class="sec" data-r="${i.id}" data-d="0">No se realizó</button></div>`:'';
-    return `<div class="res"><div><strong>${esc(i.mentor?.name||'Mentor')}</strong><br><small>${esc(i.course)} · ${esc(i.slot)} · ${esc(est)}</small></div>${act}</div>`}).join('');
+    const when=i.session_date?' · '+fd(i.session_date)+(i.session_place?' · '+i.session_place:''):'';
+    const ready=i.status==='confirmada'&&i.session_done===null&&(!i.session_date||i.session_date<=today);
+    const est=i.status==='pendiente'?'Esperando respuesta':i.status==='rechazada'?'Rechazada':i.session_done===null?(ready?'Aceptada: confirma si la sesión se realizó':'Aceptada: podrás calificar después de la sesión'):i.session_done?'Realizada · calificación '+i.rating:'No se realizó';
+    const act=ready?`<div class="slots"><select data-r="${i.id}"><option value="">Calificar…</option><option value="5">5 · Muy buena</option><option value="4">4</option><option value="3">3</option><option value="2">2</option><option value="1">1 · Mala</option></select><button class="sec" data-r="${i.id}" data-d="1">Se realizó</button><button class="sec" data-r="${i.id}" data-d="0">No se realizó</button></div>`:'';
+    return `<div class="res"><div><strong>${esc(i.mentor?.name||'Mentor')}</strong><br><small>${esc(i.course)} · ${esc(i.slot)}${esc(when)} · ${esc(est)}</small></div>${act}</div>`}).join('');
   $('mlist').querySelectorAll('button').forEach(b=>b.onclick=async()=>{try{
     const id=b.dataset.r,done=b.dataset.d==='1',rating=+$('mlist').querySelector(`select[data-r="${id}"]`).value;
     if(done&&!rating)return say('mmsg','Elige una calificación de 1 a 5 antes de confirmar.');
