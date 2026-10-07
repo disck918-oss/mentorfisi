@@ -3,7 +3,7 @@ import { sb, handler } from './_lib.js';
 export default handler(async ({ key, action, id }) => {
   if (!process.env.ADMIN_KEY || key !== process.env.ADMIN_KEY) throw new Error('Acceso denegado.');
   if (action === 'list')
-    return { items: await sb('profiles?role=eq.mentor&approved=eq.false&select=id,name,courses,slots,modality,created_at&order=created_at.asc') };
+    return { items: await sb('profiles?role=eq.mentor&approved=eq.false&select=id,name,courses,slots,modality,created_at,contact_email&order=created_at.asc') };
   if (!id || !['approve', 'reject'].includes(action)) throw new Error('Datos incompletos.');
   const base = `profiles?id=eq.${encodeURIComponent(id)}&role=eq.mentor&approved=eq.false`;
   const rows = action === 'approve'

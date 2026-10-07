@@ -30,11 +30,12 @@ button.sec{margin:0 0 0 auto;background:none;color:var(--red);border:1px solid v
 <label for="role">Quiero ser</label>
 <select id="role"><option value="mentee">Estudiante que busca apoyo</option><option value="mentor">Mentor voluntario</option></select>
 <label for="name">Nombre o alias</label><input id="name" type="text" maxlength="80" autocomplete="off">
+<div id="cwrap" hidden><label for="contact">Correo institucional</label><input id="contact" type="text" maxlength="120" autocomplete="off" placeholder="usuario@unmsm.edu.pe (solo lo ve la coordinación)"></div>
 <label for="rcourse">Curso</label><select id="rcourse"></select>
 <label>Horarios disponibles</label><div class="grid" id="rslots"></div>
 <label for="rmod">Modalidad</label>
 <select id="rmod"><option value="ambas">Presencial o virtual</option><option value="presencial">Presencial</option><option value="virtual">Virtual</option></select>
-<label class="chk"><input type="checkbox" id="consent"> Acepto que mi alias, curso y horarios se usen solo para este piloto y se compartan con la otra persona de la sesión. Los indicadores se publican de forma agregada, y la IA solo recibe curso, horarios y modalidad.</label>
+<label class="chk"><input type="checkbox" id="consent"> Acepto que mi alias, curso y horarios se usen solo para este piloto y se compartan con la otra persona de la sesión. Los indicadores se publican de forma agregada, y la IA solo recibe curso, horarios y modalidad. Si eres mentor, tu correo institucional lo verá solo la coordinación para verificar tu perfil.</label>
 <button id="reg">Registrarme</button><div class="msg" id="rmsg"></div></section>
 
 <section id="srchsec"><h2>2. Busca un mentor</h2>
@@ -62,7 +63,7 @@ const picked=g=>[...$(g).querySelectorAll('input:checked')].map(i=>i.value);
 const post=async(u,b)=>{const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const d=await r.json();if(!r.ok)throw new Error(d.error||'Error');return d};
 const say=(id,t,ok)=>{$(id).textContent=t;$(id).className='msg'+(ok?' ok':'')};
 $('reg').onclick=async()=>{try{
-  const d=await post('/api/register',{role:$('role').value,name:$('name').value,courses:[$('rcourse').value],slots:picked('rslots'),modality:$('rmod').value,consent:$('consent').checked});
+  const d=await post('/api/register',{role:$('role').value,name:$('name').value,courses:[$('rcourse').value],slots:picked('rslots'),modality:$('rmod').value,consent:$('consent').checked,contact:$('contact').value});
   if($('role').value==='mentee')menteeCode=d.code;
   if(d.code){const m=$('role').value==='mentor',u=location.origin+(m?'/?m=':'/?e=')+d.code;$('rmsg').className='msg ok';$('rmsg').innerHTML='Listo. Guarda este enlace personal: '+(m?'es tu acceso para ver y responder solicitudes. Tu perfil aparecerá en las búsquedas cuando la coordinación lo apruebe. Para cambiar tus horarios o cursos usa este mismo enlace, sin registrarte de nuevo.':'es tu acceso para ver el estado de tus solicitudes y calificar las sesiones. Ahora busca un mentor abajo.')+' <a href="'+esc(u)+'">'+esc(u)+'</a>'}else say('rmsg','Listo.',true);
 }catch(e){say('rmsg',e.message)}};
@@ -131,4 +132,5 @@ if(code||ecode){
   document.querySelector('p.sub').innerHTML=(code?'Panel del mentor':'Panel del estudiante')+' · <a href="/">Ir al inicio</a>';
   if(code)$('srchsec').hidden=true;else $('srchsec').querySelector('h2').textContent='Busca un mentor';
 }
+$('role').onchange=()=>{$('cwrap').hidden=$('role').value!=='mentor'};
 </script></body></html>

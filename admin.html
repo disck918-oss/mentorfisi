@@ -32,7 +32,7 @@ async function load(){try{
   const {items}=await call({action:'list'});
   $('login').hidden=true;$('box').hidden=false;
   $('msg').textContent=items.length?'':'No hay mentores pendientes.';
-  $('list').innerHTML=items.map(i=>`<div class="res"><div><strong>${esc(i.name)}</strong><br><small>${esc(i.courses.join(', '))} · ${esc(i.slots.join(', '))} · ${esc(i.modality)}</small></div><div class="slots"><button data-id="${i.id}" data-a="approve">Aprobar</button><button data-id="${i.id}" data-a="reject">Rechazar</button></div></div>`).join('');
+  $('list').innerHTML=items.map(i=>`<div class="res"><div><strong>${esc(i.name)}</strong><br><small>${esc(i.courses.join(', '))} · ${esc(i.slots.join(', '))} · ${esc(i.modality)}</small><br><small>${esc(i.contact_email||'sin correo registrado')}</small></div><div class="slots"><button data-id="${i.id}" data-a="approve">Aprobar</button><button data-id="${i.id}" data-a="reject">Rechazar</button></div></div>`).join('');
   $('list').querySelectorAll('button').forEach(b=>b.onclick=async()=>{try{
     if(b.dataset.a==='reject'&&!confirm('¿Eliminar este perfil?'))return;
     await call({action:b.dataset.a,id:b.dataset.id});load();
