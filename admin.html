@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>MentorFISI · Administración</title>
+<style>
+:root{--ink:#1d1b1e;--mute:#5d5a60;--bg:#f3f4f6;--panel:#fff;--line:#d9dbe0;--red:#7d1d2f}
+@media (prefers-color-scheme:dark){:root{--ink:#eceaee;--mute:#a8a5ad;--bg:#16151a;--panel:#201f26;--line:#383640;--red:#d98a98}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,sans-serif}
+main{max-width:640px;margin:0 auto;padding:24px 16px 64px}
+h1{font:700 2rem/1.1 Georgia,serif;color:var(--red);margin:8px 0 4px}h2{font:700 1.25rem Georgia,serif;margin:0 0 12px}
+.sub,.msg{color:var(--mute)}.sub{margin:0 0 20px}.msg{margin:12px 0}
+section{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:20px;margin-bottom:20px}
+label{display:block;font-weight:600;margin:0 0 4px}
+input{width:100%;padding:10px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink);font:inherit}
+button{margin-top:12px;padding:10px 18px;border:0;border-radius:4px;background:var(--red);color:var(--bg);font:600 1rem system-ui;cursor:pointer}
+.res{border-top:1px solid var(--line);padding:12px 0;display:flex;gap:12px;align-items:center}.res small{color:var(--mute)}
+.slots{display:flex;flex-direction:column;gap:6px;margin-left:auto}.slots button{margin:0;background:none;color:var(--red);border:1px solid var(--red);padding:6px 12px}
+</style></head><body><main>
+<h1>Administración</h1>
+<p class="sub">Aprobación de mentores. Solo para la coordinación del piloto.</p>
+<section id="login"><label for="k">Clave de administración</label><input id="k" type="password" autocomplete="off"><button id="go">Entrar</button></section>
+<div class="msg" id="msg"></div>
+<section id="box" hidden><h2>Mentores pendientes</h2><div id="list"></div></section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let KEY='';
+const call=async b=>{const r=await fetch('/api/admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:KEY,...b})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Error');return d};
+async function load(){try{
+  const {items}=await call({action:'list'});
+  $('login').hidden=true;$('box').hidden=false;
+  $('msg').textContent=items.length?'':'No hay mentores pendientes.';
+  $('list').innerHTML=items.map(i=>`<div class="res"><div><strong>${esc(i.name)}</strong><br><small>${esc(i.courses.join(', '))} · ${esc(i.slots.join(', '))} · ${esc(i.modality)}</small></div><div class="slots"><button data-id="${i.id}" data-a="approve">Aprobar</button><button data-id="${i.id}" data-a="reject">Rechazar</button></div></div>`).join('');
+  $('list').querySelectorAll('button').forEach(b=>b.onclick=async()=>{try{
+    if(b.dataset.a==='reject'&&!confirm('¿Eliminar este perfil?'))return;
+    await call({action:b.dataset.a,id:b.dataset.id});load();
+  }catch(e){$('msg').textContent=e.message}});
+}catch(e){$('msg').textContent=e.message}}
+$('go').onclick=()=>{KEY=$('k').value;load()};
+</script></body></html>

@@ -34,7 +34,7 @@ button.sec{margin:0 0 0 auto;background:none;color:var(--red);border:1px solid v
 <label>Horarios disponibles</label><div class="grid" id="rslots"></div>
 <label for="rmod">Modalidad</label>
 <select id="rmod"><option value="ambas">Presencial o virtual</option><option value="presencial">Presencial</option><option value="virtual">Virtual</option></select>
-<label class="chk"><input type="checkbox" id="consent"> Acepto que mis datos se usen solo para el piloto y se muestren de forma agregada.</label>
+<label class="chk"><input type="checkbox" id="consent"> Acepto que mi alias, curso y horarios se usen solo para este piloto y se compartan con la otra persona de la sesión. Los indicadores se publican de forma agregada, y la IA solo recibe curso, horarios y modalidad.</label>
 <button id="reg">Registrarme</button><div class="msg" id="rmsg"></div></section>
 
 <section><h2>2. Busca un mentor</h2>
@@ -58,7 +58,7 @@ const say=(id,t,ok)=>{$(id).textContent=t;$(id).className='msg'+(ok?' ok':'')};
 $('reg').onclick=async()=>{try{
   const d=await post('/api/register',{role:$('role').value,name:$('name').value,courses:[$('rcourse').value],slots:picked('rslots'),modality:$('rmod').value,consent:$('consent').checked});
   if($('role').value==='mentee')menteeId=d.id;
-  if(d.code){const m=$('role').value==='mentor',u=location.origin+(m?'/?m=':'/?e=')+d.code;$('rmsg').className='msg ok';$('rmsg').innerHTML='Listo. Guarda este enlace personal: '+(m?'es tu acceso para ver y responder solicitudes.':'es tu acceso para ver el estado de tus solicitudes y calificar las sesiones. Ahora busca un mentor abajo.')+' <a href="'+esc(u)+'">'+esc(u)+'</a>'}else say('rmsg','Listo.',true);
+  if(d.code){const m=$('role').value==='mentor',u=location.origin+(m?'/?m=':'/?e=')+d.code;$('rmsg').className='msg ok';$('rmsg').innerHTML='Listo. Guarda este enlace personal: '+(m?'es tu acceso para ver y responder solicitudes. Tu perfil aparecerá en las búsquedas cuando la coordinación lo apruebe.':'es tu acceso para ver el estado de tus solicitudes y calificar las sesiones. Ahora busca un mentor abajo.')+' <a href="'+esc(u)+'">'+esc(u)+'</a>'}else say('rmsg','Listo.',true);
 }catch(e){say('rmsg',e.message)}};
 $('find').onclick=async()=>{try{
   say('smsg','Buscando…');$('out').innerHTML='';
@@ -75,8 +75,8 @@ $('find').onclick=async()=>{try{
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 const code=new URLSearchParams(location.search).get('m');
 async function loadInbox(){try{
-  const {items}=await post('/api/inbox',{code});
-  say('imsg',items.length?'':'Aún no tienes solicitudes.');
+  const {items,approved}=await post('/api/inbox',{code});
+  say('imsg',!approved?'Tu perfil está pendiente de aprobación: aún no apareces en las búsquedas.':items.length?'':'Aún no tienes solicitudes.');
   $('ilist').innerHTML=items.map(i=>`<div class="res"><div><strong>${esc(i.mentee?.name||'Estudiante')}</strong><br><small>${esc(i.course)} · ${esc(i.slot)} · ${esc(i.status)}</small></div>${i.status==='pendiente'?`<div class="slots"><button class="sec" data-r="${i.id}" data-a="confirmada">Aceptar</button><button class="sec" data-r="${i.id}" data-a="rechazada">Rechazar</button></div>`:''}</div>`).join('');
   $('ilist').querySelectorAll('button').forEach(b=>b.onclick=async()=>{try{await post('/api/respond',{code,request_id:b.dataset.r,action:b.dataset.a});loadInbox()}catch(e){say('imsg',e.message)}});
 }catch(e){say('imsg',e.message)}}

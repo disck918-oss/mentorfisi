@@ -23,7 +23,7 @@ async function explain(course, items) {
 export default handler(async ({ course, slots = [], modality = 'ambas' }) => {
   if (!course) throw new Error('Elige un curso.');
   const filter = encodeURIComponent(`{"${course.replace(/["{}\\]/g, '')}"}`);
-  const mentors = await sb(`profiles?role=eq.mentor&courses=cs.${filter}`);
+  const mentors = await sb(`profiles?role=eq.mentor&approved=eq.true&courses=cs.${filter}`);
   const ranked = mentors
     .map(m => {
       const common = m.slots.filter(s => slots.includes(s));
