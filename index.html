@@ -8,7 +8,7 @@
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,sans-serif}
 main{max-width:640px;margin:0 auto;padding:24px 16px 64px}
 h1{font:700 2rem/1.1 Georgia,serif;color:var(--red);margin:8px 0 4px}h2{font:700 1.25rem Georgia,serif;margin:0 0 12px}
-p.sub{color:var(--mute);margin:0 0 24px}
+p.sub{color:var(--mute);margin:0 0 24px}p.sub a{color:var(--red)}
 section{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:20px;margin-bottom:20px}
 label{display:block;font-weight:600;margin:14px 0 4px}
 input[type=text],input[type=date],select{width:100%;padding:10px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink);font:inherit}
@@ -26,7 +26,7 @@ button.sec{margin:0 0 0 auto;background:none;color:var(--red);border:1px solid v
 <h1>MentorFISI</h1>
 <p class="sub">Encuentra a un estudiante avanzado que te ayude en tu curso. Prototipo del piloto: no uses datos académicos reales.</p>
 
-<section><h2>1. Regístrate</h2>
+<section id="regsec"><h2>1. Regístrate</h2>
 <label for="role">Quiero ser</label>
 <select id="role"><option value="mentee">Estudiante que busca apoyo</option><option value="mentor">Mentor voluntario</option></select>
 <label for="name">Nombre o alias</label><input id="name" type="text" maxlength="80" autocomplete="off">
@@ -37,7 +37,7 @@ button.sec{margin:0 0 0 auto;background:none;color:var(--red);border:1px solid v
 <label class="chk"><input type="checkbox" id="consent"> Acepto que mi alias, curso y horarios se usen solo para este piloto y se compartan con la otra persona de la sesión. Los indicadores se publican de forma agregada, y la IA solo recibe curso, horarios y modalidad.</label>
 <button id="reg">Registrarme</button><div class="msg" id="rmsg"></div></section>
 
-<section><h2>2. Busca un mentor</h2>
+<section id="srchsec"><h2>2. Busca un mentor</h2>
 <label for="scourse">Curso</label><select id="scourse"></select>
 <label>Tus horarios</label><div class="grid" id="sslots"></div>
 <label for="smod">Modalidad</label>
@@ -126,4 +126,9 @@ $('psave').onclick=async()=>{try{
   say('pmsg',r.reapproval?'Guardado. Agregaste cursos nuevos: tu perfil queda pendiente hasta que la coordinación los apruebe.':'Guardado.',true);
   loadInbox();
 }catch(e){say('pmsg',e.message)}};
+if(code||ecode){
+  $('regsec').hidden=true;
+  document.querySelector('p.sub').innerHTML=(code?'Panel del mentor':'Panel del estudiante')+' · <a href="/">Ir al inicio</a>';
+  if(code)$('srchsec').hidden=true;else $('srchsec').querySelector('h2').textContent='Busca un mentor';
+}
 </script></body></html>
