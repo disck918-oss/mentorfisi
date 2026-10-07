@@ -45,6 +45,12 @@ button.sec{margin:0 0 0 auto;background:none;color:var(--red);border:1px solid v
 <button id="find">Buscar mentores</button><div class="msg" id="smsg"></div><div id="out"></div></section>
 <section id="inbox" hidden><h2>Solicitudes recibidas</h2><div class="msg" id="imsg"></div><div id="ilist"></div></section>
 <section id="mine" hidden><h2>Mis solicitudes</h2><div class="msg" id="mmsg"></div><div id="mlist"></div></section>
+<section id="prof" hidden><h2>Mi perfil de mentor</h2>
+<label>Cursos que puedes apoyar</label><div id="pcourses"></div>
+<label>Horarios disponibles</label><div class="grid" id="pslots"></div>
+<label for="pmod">Modalidad</label>
+<select id="pmod"><option value="ambas">Presencial o virtual</option><option value="presencial">Presencial</option><option value="virtual">Virtual</option></select>
+<button id="psave">Guardar cambios</button><div class="msg" id="pmsg"></div></section>
 </main>
 <script>
 const COURSES=['Matemática Básica','Cálculo I','Física I','Algoritmos y Programación','Estructuras de Datos'];
@@ -58,7 +64,7 @@ const say=(id,t,ok)=>{$(id).textContent=t;$(id).className='msg'+(ok?' ok':'')};
 $('reg').onclick=async()=>{try{
   const d=await post('/api/register',{role:$('role').value,name:$('name').value,courses:[$('rcourse').value],slots:picked('rslots'),modality:$('rmod').value,consent:$('consent').checked});
   if($('role').value==='mentee')menteeId=d.id;
-  if(d.code){const m=$('role').value==='mentor',u=location.origin+(m?'/?m=':'/?e=')+d.code;$('rmsg').className='msg ok';$('rmsg').innerHTML='Listo. Guarda este enlace personal: '+(m?'es tu acceso para ver y responder solicitudes. Tu perfil aparecerá en las búsquedas cuando la coordinación lo apruebe.':'es tu acceso para ver el estado de tus solicitudes y calificar las sesiones. Ahora busca un mentor abajo.')+' <a href="'+esc(u)+'">'+esc(u)+'</a>'}else say('rmsg','Listo.',true);
+  if(d.code){const m=$('role').value==='mentor',u=location.origin+(m?'/?m=':'/?e=')+d.code;$('rmsg').className='msg ok';$('rmsg').innerHTML='Listo. Guarda este enlace personal: '+(m?'es tu acceso para ver y responder solicitudes. Tu perfil aparecerá en las búsquedas cuando la coordinación lo apruebe. Para cambiar tus horarios o cursos usa este mismo enlace, sin registrarte de nuevo.':'es tu acceso para ver el estado de tus solicitudes y calificar las sesiones. Ahora busca un mentor abajo.')+' <a href="'+esc(u)+'">'+esc(u)+'</a>'}else say('rmsg','Listo.',true);
 }catch(e){say('rmsg',e.message)}};
 $('find').onclick=async()=>{try{
   say('smsg','Buscando…');$('out').innerHTML='';
@@ -91,7 +97,7 @@ async function loadInbox(){try{
     await post('/api/respond',{code,request_id:id,action:b.dataset.a,date:acc?date:undefined,place:acc?place:undefined});loadInbox();
   }catch(e){say('imsg',e.message)}});
 }catch(e){say('imsg',e.message)}}
-if(code){$('inbox').hidden=false;loadInbox()}
+if(code){$('inbox').hidden=false;$('prof').hidden=false;loadInbox();loadProfile()}
 const ecode=new URLSearchParams(location.search).get('e');
 async function loadMine(){try{
   const {items,today}=await post('/api/mine',{code:ecode});
@@ -109,4 +115,15 @@ async function loadMine(){try{
   }catch(e){say('mmsg',e.message)}});
 }catch(e){say('mmsg',e.message)}}
 if(ecode){$('mine').hidden=false;loadMine()}
+async function loadProfile(){try{
+  const p=await post('/api/profile',{code,action:'get'});
+  $('pcourses').innerHTML=COURSES.map(c=>`<label class="chk"><input type="checkbox" value="${esc(c)}"${p.courses.includes(c)?' checked':''}> ${esc(c)}</label>`).join('');
+  $('pslots').innerHTML=SLOTS.map(s=>`<label><input type="checkbox" value="${s}"${p.slots.includes(s)?' checked':''}>${s}</label>`).join('');
+  $('pmod').value=p.modality;
+}catch(e){say('pmsg',e.message)}}
+$('psave').onclick=async()=>{try{
+  const r=await post('/api/profile',{code,action:'save',courses:picked('pcourses'),slots:picked('pslots'),modality:$('pmod').value});
+  say('pmsg',r.reapproval?'Guardado. Agregaste cursos nuevos: tu perfil queda pendiente hasta que la coordinación los apruebe.':'Guardado.',true);
+  loadInbox();
+}catch(e){say('pmsg',e.message)}};
 </script></body></html>
